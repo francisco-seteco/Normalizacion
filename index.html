@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Normativo - Organismos de Estandarización</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars for inside organization boxes */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.7);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(51, 65, 85, 0.9);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(14, 165, 233, 0.8);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">
+                        <i class="fa-solid fa-tower-cell text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-white tracking-tight">Observatorio Normativo Técnico</h1>
+                        <p class="text-xs text-slate-400">Cuadrícula con hasta 10 noticias por organismo y enlaces directos a publicaciones de origen</p>
+                    </div>
+                </div>
+
+                <!-- Timer, Selector & Action buttons -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Countdown Display -->
+                    <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center space-x-2 text-xs">
+                        <div class="relative flex h-2.5 w-2.5">
+                            <span id="pulse-dot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
+                        </div>
+                        <span class="text-slate-400">Auto-refresh:</span>
+                        <span id="timer-display" class="font-mono font-bold text-sky-400 text-sm">59m 59s</span>
+                    </div>
+
+                    <!-- Limit Selector (8 vs 10 items) -->
+                    <div class="flex items-center bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-xl text-xs space-x-2">
+                        <span class="text-slate-400">Límite:</span>
+                        <select id="limit-selector" class="bg-slate-900 text-sky-400 font-bold border border-slate-700 rounded px-1.5 py-0.5 focus:outline-none focus:border-sky-500">
+                            <option value="10" selected>10 noticias</option>
+                            <option value="8">8 noticias</option>
+                            <option value="5">5 noticias</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-refresh" class="px-3.5 py-2 text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-all flex items-center space-x-2">
+                        <i id="refresh-icon" class="fa-solid fa-rotate text-sky-400"></i>
+                        <span>Sincronizar</span>
+                    </button>
+
+                    <button id="btn-export" class="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-lg shadow-lg shadow-sky-600/20 transition-all flex items-center space-x-2">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                        <span>Exportar Reporte</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <!-- Search and Filter Panel -->
+        <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                
+                <!-- Search Input -->
+                <div class="md:col-span-6 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input type="text" id="search-input" placeholder="Buscar por palabra clave o estándar (ej. 5G, IA, ISO/IEC 42001, UNE 165010)..." 
+                        class="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all">
+                </div>
+
+                <!-- Topic Selector Pills -->
+                <div class="md:col-span-6 flex flex-wrap items-center gap-1.5" id="topic-pills">
+                    <!-- Dynamic Pills inserted via JS -->
+                </div>
+            </div>
+
+            <!-- Stats Ribbon -->
+            <div class="pt-3 border-t border-slate-800/60 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-xs text-slate-400 block">Organismos Monitoreados</span>
+                    <span id="stat-orgs" class="text-lg font-bold text-sky-400">8</span>
+                </div>
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-xs text-slate-400 block">Noticias Mostradas (Total en cuadrícula)</span>
+                    <span id="stat-articles" class="text-lg font-bold text-emerald-400">80</span>
+                </div>
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-xs text-slate-400 block">Área Temática Filtrada</span>
+                    <span id="stat-topic" class="text-lg font-bold text-amber-400">Todos</span>
+                </div>
+                <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/40">
+                    <span class="text-xs text-slate-400 block">Sincronizado a las</span>
+                    <span id="stat-time" class="text-lg font-bold text-slate-300">--:--</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="org-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+            <!-- Organization Cards dynamically populated here -->
+        </section>
+
+    </main>
+
+    <footer class="border-t border-slate-800 bg-slate-900/60 mt-auto py-5">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+                <span>© 2026 Observatorio Normativo Técnico • Todos los enlaces conducen al artículo original específico</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span id="sync-status" class="inline-flex items-center gap-1.5 text-emerald-400">
+                    <i class="fa-solid fa-circle-check text-[10px]"></i> Sincronización automática de 1 hora activa
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Dataset de 8 Organismos con 10 Noticias cada uno y enlaces directos exactos por publicación
+        const ORGANIZATIONS_DATA = [
+            {
+                id: "iso",
+                name: "ISO",
+                fullName: "Organización Internacional de Normalización",
+                logo: "fa-globe",
+                badgeColor: "border-red-500/30 text-red-400 bg-red-500/10",
+                url: "https://www.iso.org/",
+                articles: [
+                    {
+                        id: "iso-1",
+                        title: "ISO/IEC 42001: Publicada la norma de Gestión de Inteligencia Artificial",
+                        date: "2026-10-02",
+                        topic: "Inteligencia Artificial",
+                        summary: "Establece los requisitos y buenas prácticas para implementar un sistema de gestión de IA seguro y ético.",
+                        takeaways: ["Auditoría de datos y mitigación de sesgos.", "Marco obligatorio para certificación corporativa."],
+                        link: "https://www.iso.org/contents/news/2026/10/iso-iec-42001-ai-management.html"
+                    },
+                    {
+                        id: "iso-2",
+                        title: "Directrices ISO para medición de la huella de carbono digital",
+                        date: "2026-09-28",
+                        topic: "Sostenibilidad",
+                        summary: "Nuevo estándar marco para auditar el consumo energético en centros de datos e infraestructuras cloud.",
+                        takeaways: ["Métricas estandarizadas de PUE.", "Líneas de base para reportes ESG."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-14064-digital-carbon-footprint.html"
+                    },
+                    {
+                        id: "iso-3",
+                        title: "Revisión técnica ISO/IEC 27001 para Ciberseguridad Cloud",
+                        date: "2026-09-24",
+                        topic: "Ciberseguridad",
+                        summary: "Actualización de controles frente a ciberamenazas emergentes y encriptación post-cuántica.",
+                        takeaways: ["Cifrado resistente a ordenadores cuánticos.", "Arquitectura Zero-Trust recomendada."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-iec-27001-post-quantum-update.html"
+                    },
+                    {
+                        id: "iso-4",
+                        title: "Publicado estándar ISO 37001 sobre cumplimiento e integridad corporativa",
+                        date: "2026-09-20",
+                        topic: "Normalización Industrial",
+                        summary: "Sistemas de gestión antisoborno y transparencia operativa para proveedores tecnológicos.",
+                        takeaways: ["Evaluación de riesgos de terceros.", "Sistemas de alertas normativas internas."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-37001-anti-bribery-standard.html"
+                    },
+                    {
+                        id: "iso-5",
+                        title: "Guía ISO para la ergonomía y seguridad en robótica colaborativa (Cobots)",
+                        date: "2026-09-15",
+                        topic: "Normalización Industrial",
+                        summary: "Especificación técnica para la interacción directa entre humanos y cobots en líneas de ensamblaje.",
+                        takeaways: ["Limitación de velocidad y fuerza de impacto.", "Sensores de proximidad certificados."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-10218-cobots-industrial-safety.html"
+                    },
+                    {
+                        id: "iso-6",
+                        title: "ISO 50001:2026 - Estrategias para la descarbonización energética industrial",
+                        date: "2026-09-11",
+                        topic: "Sostenibilidad",
+                        summary: "Nueva adenda sobre integración de hidrógeno verde y electrificación en procesos térmicos masivos.",
+                        takeaways: ["Indicadores de rendimiento en tiempo real.", "Planes de transición neta a cero."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-50001-energy-decarbonization.html"
+                    },
+                    {
+                        id: "iso-7",
+                        title: "Norma ISO 22301 para Resiliencia Operativa y Continuidad de Negocio",
+                        date: "2026-09-07",
+                        topic: "Normalización Industrial",
+                        summary: "Requisitos para mantener la operabilidad crítica ante fallos sistémicos en la cadena de suministro.",
+                        takeaways: ["Simulaciones de interrupción cibernética.", "Estrategias de recuperación rápida."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-22301-business-continuity.html"
+                    },
+                    {
+                        id: "iso-8",
+                        title: "Estandarización de Métricas para la Salud Digital y Telemedicina (ISO/TC 215)",
+                        date: "2026-09-02",
+                        topic: "Normalización Industrial",
+                        summary: "Interoperabilidad de registros médicos y encriptación end-to-end en dispositivos biomédicos IoT.",
+                        takeaways: ["Compatibilidad universal de historiales clínicos.", "Protocolos de privacidad de datos sensibles."],
+                        link: "https://www.iso.org/contents/news/2026/09/iso-tc215-digital-health-standard.html"
+                    },
+                    {
+                        id: "iso-9",
+                        title: "ISO 13485: Directrices actualizadas para fabricación de dispositivos médicos",
+                        date: "2026-08-28",
+                        topic: "Normalización Industrial",
+                        summary: "Armonización global para el diseño, validación y trazabilidad de software médico embebido.",
+                        takeaways: ["Garantía de calidad en software SAMD.", "Gestión de riesgos regulatorios."],
+                        link: "https://www.iso.org/contents/news/2026/08/iso-13485-medical-device-software.html"
+                    },
+                    {
+                        id: "iso-10",
+                        title: "Nueva Norma ISO sobre Privacidad y Protección de Datos en Entornos IoT",
+                        date: "2026-08-22",
+                        topic: "Ciberseguridad",
+                        summary: "Marco para la disociación y anonimización automática de datos recolectados por sensores domésticos.",
+                        takeaways: ["Consentimiento dinámico de usuarios.", "Cifrado ligero para microcontroladores."],
+                        link: "https://www.iso.org/contents/news/2026/08/iso-27550-iot-data-privacy.html"
+                    }
+                ]
+            },
+            {
+                id: "iec",
+                name: "IEC",
+                fullName: "Comisión Electrotécnica Internacional",
+                logo: "fa-bolt",
+                badgeColor: "border-amber-500/30 text-amber-400 bg-amber-500/10",
+                url: "https://www.iec.ch/",
+                articles: [
+                    {
+                        id: "iec-1",
+                        title: "IEC actualiza estándares de seguridad eléctrica para redes inteligentes",
+                        date: "2026-10-01",
+                        topic: "Electrotecnia",
+                        summary: "Se aprueban especificaciones de protección sobretensiones e integración de microrredes renovables.",
+                        takeaways: ["Nuevos protocolos para inversores.", "Armonización técnica de redes distribuidas."],
+                        link: "https://www.iec.ch/blog/smart-grid-electrical-safety-update-2026"
+                    },
+                    {
+                        id: "iec-2",
+                        title: "Norma IEC 62443: Ciberseguridad en Sistemas de Control Industrial (OT)",
+                        date: "2026-09-26",
+                        topic: "Ciberseguridad",
+                        summary: "Guía ampliada para la resiliencia operativa en plantas de fabricación y distribución eléctrica.",
+                        takeaways: ["Segregación de redes IT/OT.", "Evaluación de riesgos en dispositivos de planta."],
+                        link: "https://www.iec.ch/news/iec-62443-ot-cybersecurity-guidelines"
+                    },
+                    {
+                        id: "iec-3",
+                        title: "Estándar de baterías e interoperabilidad para movilidad eléctrica V2G",
+                        date: "2026-09-22",
+                        topic: "Electrotecnia",
+                        summary: "Especificación técnica unificada para recarga ultra-rápida y almacenamiento estático.",
+                        takeaways: ["Conectores estandarizados de alta potencia.", "Comunicación bidireccional vehículo-red."],
+                        link: "https://www.iec.ch/news/v2g-vehicle-to-grid-battery-standards"
+                    },
+                    {
+                        id: "iec-4",
+                        title: "Requisitos de eficiencia energética para transformadores de distribución",
+                        date: "2026-09-17",
+                        topic: "Sostenibilidad",
+                        summary: "Reducción obligatoria de pérdidas en vacío para infraestructuras eléctricas urbanas.",
+                        takeaways: ["Materiales magnéticos de ultra-bajo nivel de pérdida.", "Etiquetado de eficiencia Nivel 3."],
+                        link: "https://www.iec.ch/news/transformer-energy-efficiency-class-3"
+                    },
+                    {
+                        id: "iec-5",
+                        title: "IEC TR 63300: Marco técnico para la digitalización de subestaciones",
+                        date: "2026-09-13",
+                        topic: "Electrotecnia",
+                        summary: "Recomendaciones para migración de subestaciones convencionales a fibra óptica con protocolo IEC 61850.",
+                        takeaways: ["Sensores digitales de corriente optical-based.", "Interoperabilidad entre fabricantes."],
+                        link: "https://www.iec.ch/news/digital-substations-iec-61850-framework"
+                    },
+                    {
+                        id: "iec-6",
+                        title: "Seguridad en almacenamiento de energía mediante baterías de flujo redox",
+                        date: "2026-09-08",
+                        topic: "Electrotecnia",
+                        summary: "Especificación de contención de electrolitos e instalaciones a gran escala para parques solares.",
+                        takeaways: ["Prevención de corrosión química.", "Monitoreo continuo de celdas."],
+                        link: "https://www.iec.ch/news/redox-flow-battery-utility-safety"
+                    },
+                    {
+                        id: "iec-7",
+                        title: "CEN/IEC 60601: Enmienda de compatibilidad electromagnética en quirófanos",
+                        date: "2026-09-03",
+                        topic: "Electrotecnia",
+                        summary: "Límites estrictos de emisión RF para equipos quirúrgicos láser e instrumental de alta frecuencia.",
+                        takeaways: ["Mitigación de interferencias en tiempo real.", "Inmunidad ante redes 5G privadas."],
+                        link: "https://www.iec.ch/news/iec-60601-medical-emc-amendment"
+                    },
+                    {
+                        id: "iec-8",
+                        title: "IEC 61400-25: Estándar para la gestión de parques eólicos offshore",
+                        date: "2026-08-29",
+                        topic: "Sostenibilidad",
+                        summary: "Modelos de datos SCADA unificados para mantenimiento predictivo en turbinas en alta mar.",
+                        takeaways: ["Telemetría marina estandarizada.", "Detección temprana de fatiga estructural."],
+                        link: "https://www.iec.ch/news/offshore-wind-scada-iec-61400"
+                    },
+                    {
+                        id: "iec-9",
+                        title: "Normalización de conectores USB Type-C de hasta 240W para electrónica",
+                        date: "2026-08-24",
+                        topic: "Electrotecnia",
+                        summary: "Aprobación del estándar de entrega de energía EPR (Extended Power Range) en todos los dispositivos.",
+                        takeaways: ["Carga única para ordenadores portátiles e instrumental.", "Reducción de residuos de adaptadores."],
+                        link: "https://www.iec.ch/news/usb-power-delivery-240w-epr-standard"
+                    },
+                    {
+                        id: "iec-10",
+                        title: "Seguridad fotovoltaica contra incendios en tejados industriales (IEC 61730)",
+                        date: "2026-08-19",
+                        topic: "Sostenibilidad",
+                        summary: "Nuevas pruebas de inflamabilidad e interruptores de desconexión rápida a nivel de módulo.",
+                        takeaways: ["Desconexión automática en menos de 10 segundos.", "Certificación de resistencia a arcos voltaicos."],
+                        link: "https://www.iec.ch/news/pv-module-fire-safety-iec-61730"
+                    }
+                ]
+            },
+            {
+                id: "itu",
+                name: "ITU-T",
+                fullName: "Unión Internacional de Telecomunicaciones",
+                logo: "fa-satellite-dish",
+                badgeColor: "border-sky-500/30 text-sky-400 bg-sky-500/10",
+                url: "https://www.itu.int/en/itu-t/",
+                articles: [
+                    {
+                        id: "itu-1",
+                        title: "Aprobadas recomendaciones ITU-T para redes ópticas de 800G y 1.6T",
+                        date: "2026-10-02",
+                        topic: "Telecomunicaciones",
+                        summary: "El Grupo de Estudio 15 aprueba los parámetros físicos para transmisión de datos a ultra-alta velocidad.",
+                        takeaways: ["Reducción de latencia en redes troncales.", "Soporte para tráfico masivo de centros de IA."],
+                        link: "https://www.itu.int/en/ITU-T/focusgroups/ai4ndm/Pages/article-800g-16t-optical.aspx"
+                    },
+                    {
+                        id: "itu-2",
+                        title: "Marco ITU-T para la distribución de claves cuánticas (QKD) en fibra",
+                        date: "2026-09-27",
+                        topic: "5G/6G & Redes",
+                        summary: "Directrices para integrar seguridad cuántica sobre la infraestructura de fibra óptica existente.",
+                        takeaways: ["Modelos de arquitectura QKD intercalada.", "Compatibilidad con WDM comercial."],
+                        link: "https://www.itu.int/en/ITU-T/studygroups/2025-2028/17/Pages/qkd-quantum-security-framework.aspx"
+                    },
+                    {
+                        id: "itu-3",
+                        title: "Estandarización de métricas QoE para transmisiones inmersivas y AR/VR",
+                        date: "2026-09-21",
+                        topic: "Telecomunicaciones",
+                        summary: "Definición de algoritmos objetivos para medir la calidad percibida en tráfico hológrafo y video 8K.",
+                        takeaways: ["Monitoreo de latencia motion-to-photon.", "Optimización adaptativa de ancho de banda."],
+                        link: "https://www.itu.int/en/ITU-T/news/Pages/20260921-immersive-video-qoe-metrics.aspx"
+                    },
+                    {
+                        id: "itu-4",
+                        title: "Directrices para la reducción de basura electrónica en telecomunicaciones",
+                        date: "2026-09-16",
+                        topic: "Sostenibilidad",
+                        summary: "Estrategias de economía circular para operadoras de telefonía móvil y equipamiento de cliente (CPE).",
+                        takeaways: ["Diseño modular para sustitución rápida de componentes.", "Estándares de reciclabilidad."],
+                        link: "https://www.itu.int/en/ITU-T/climatechange/Pages/e-waste-reduction-guidelines-2026.aspx"
+                    },
+                    {
+                        id: "itu-5",
+                        title: "Lanzamiento de la iniciativa ITU para inclusión conectiva en zonas rurales",
+                        date: "2026-09-10",
+                        topic: "Telecomunicaciones",
+                        summary: "Estándares de bajo coste para enlaces inalámbricos comunitarios y conectividad satelital directa.",
+                        takeaways: ["Backhaul híbrido satélite-terrestre.", "Consumo de energía ultra-bajo para paneles solares."],
+                        link: "https://www.itu.int/en/ITU-T/initiatives/connect2030/Pages/rural-connectivity-standard.aspx"
+                    },
+                    {
+                        id: "itu-6",
+                        title: "ITU-T Y.3180: Arquitectura de red impulsada por Inteligencia Artificial GenAI",
+                        date: "2026-09-05",
+                        topic: "Inteligencia Artificial",
+                        summary: "Normalización de agentes autónomos para auto-curación y despliegue dinámico de microservicios.",
+                        takeaways: ["APIs estandarizadas para LLMs de red.", "Optimización de enrutamiento sin intervención humana."],
+                        link: "https://www.itu.int/rec/T-REC-Y.3180-202609-I/en"
+                    },
+                    {
+                        id: "itu-7",
+                        title: "Recomendaciones ITU-T G.9804 para redes de acceso por fibra 50G-PON",
+                        date: "2026-08-31",
+                        topic: "Telecomunicaciones",
+                        summary: "Especificación física de la capa de transmisión para fibra FTTH ultrarrápida de próxima generación.",
+                        takeaways: ["Coexistencia con tecnología XGS-PON actual.", "Baja latencia garantizada para eSports y telecirugía."],
+                        link: "https://www.itu.int/rec/T-REC-G.9804.3-202608-I/en"
+                    },
+                    {
+                        id: "itu-8",
+                        title: "Estándar de compresión de video H.266/VVC - Perfil de Ultra Baja Latencia",
+                        date: "2026-08-26",
+                        topic: "Telecomunicaciones",
+                        summary: "Reducción del 50% de tasa de bits respecto a HEVC para streaming interactivo en tiempo real.",
+                        takeaways: ["Codificación adaptativa por IA.", "Soporte nativo para transmisiones multivista 3D."],
+                        link: "https://www.itu.int/en/ITU-T/news/Pages/h266-vvc-ultra-low-latency-profile.aspx"
+                    },
+                    {
+                        id: "itu-9",
+                        title: "ITU-T X.1060: Guía para el diseño de Centros de Operaciones de Seguridad (SOC)",
+                        date: "2026-08-20",
+                        topic: "Ciberseguridad",
+                        summary: "Marco de referencia global para la evaluación de capacidades defensivas contra ransomware.",
+                        takeaways: ["Niveles de madurez operativa.", "Intercambio automatizado de indicadores de compromiso."],
+                        link: "https://www.itu.int/rec/T-REC-X.1060-202608-I/en"
+                    },
+                    {
+                        id: "itu-10",
+                        title: "Gobernanza de nombres de dominio e identificadores IoT descentralizados",
+                        date: "2026-08-14",
+                        topic: "5G/6G & Redes",
+                        summary: "Resolución sobre registros distribuidos (DLT) para direccionamiento único de miles de millones de sensores.",
+                        takeaways: ["Resolución de nombres basada en blockchain.", "Prevención de secuestro de identidad de dispositivos."],
+                        link: "https://www.itu.int/en/ITU-T/studygroups/2025-2028/20/Pages/decentralized-iot-naming.aspx"
+                    }
+                ]
+            },
+            {
+                id: "etsi",
+                name: "ETSI",
+                fullName: "Instituto Europeo de Normas de Telecomunicaciones",
+                logo: "fa-network-wired",
+                badgeColor: "border-blue-500/30 text-blue-400 bg-blue-500/10",
+                url: "https://www.etsi.org/",
+                articles: [
+                    {
+                        id: "etsi-1",
+                        title: "ETSI especifica arquitecturas de Redes Cero Toque (Zero-Touch ZSM)",
+                        date: "2026-10-02",
+                        topic: "5G/6G & Redes",
+                        summary: "Publicación de estándares ZSM 009 para orquestación y gestión automatizada de red mediante IA.",
+                        takeaways: ["Autogestión de fallos en tiempo real.", "Reducción de costes operacionales de red."],
+                        link: "https://www.etsi.org/newsroom/news/2410-etsi-zsm-009-zero-touch-network-architecture"
+                    },
+                    {
+                        id: "etsi-2",
+                        title: "Especificación ETSI EN 303 645 para ciberseguridad en IoT de consumo",
+                        date: "2026-09-27",
+                        topic: "Ciberseguridad",
+                        summary: "Estándar de referencia europeo para garantizar la privacidad y seguridad en Smart Home e IoT.",
+                        takeaways: ["Prohibición de contraseñas universales por defecto.", "Política obligatoria de parches."],
+                        link: "https://www.etsi.org/newsroom/news/2405-etsi-en-303-645-iot-cybersecurity-release"
+                    },
+                    {
+                        id: "etsi-3",
+                        title: "Estándar de Comunicaciones de Transporte Inteligente (ITS G5)",
+                        date: "2026-09-22",
+                        topic: "Telecomunicaciones",
+                        summary: "Normalización del intercambio de mensajes vehículo-a-todo (V2X) para prevención de colisiones.",
+                        takeaways: ["Garantía de baja latencia en 5.9 GHz.", "Coexistencia con redes celulares C-V2X."],
+                        link: "https://www.etsi.org/newsroom/news/2398-its-g5-v2x-automotive-safety-standard"
+                    },
+                    {
+                        id: "etsi-4",
+                        title: "ETSI ISG F5G: Evolución hacia redes de fibra fija de quinta generación",
+                        date: "2026-09-17",
+                        topic: "5G/6G & Redes",
+                        summary: "Avanzan los trabajos en F5G Advanced ofreciendo 10 Gbps simétricos para empresas y hogares.",
+                        takeaways: ["Latencia garantizada inferior a 1 ms.", "Fiabilidad del 99.9999% en fibra."],
+                        link: "https://www.etsi.org/newsroom/news/2389-f5g-advanced-fixed-fiber-10g-specification"
+                    },
+                    {
+                        id: "etsi-5",
+                        title: "Publicado informe de firma electrónica cualificada eIDAS 2",
+                        date: "2026-09-12",
+                        topic: "Ciberseguridad",
+                        summary: "Especificación para la billetera de identidad digital europea (EU Digital Identity Wallet).",
+                        takeaways: ["Formatos normalizados de credenciales verificables.", "Cifrado seguro en elemento físico."],
+                        link: "https://www.etsi.org/newsroom/news/2381-eidas2-digital-identity-wallet-signature-spec"
+                    },
+                    {
+                        id: "etsi-6",
+                        title: "ETSI MEC: Multi-access Edge Computing para aplicaciones de Ultra-Baja Latencia",
+                        date: "2026-09-06",
+                        topic: "5G/6G & Redes",
+                        summary: "Fusión de computación en el borde con micro-datacenters en estaciones base 5G.",
+                        takeaways: ["Descarga de procesamiento local.", "APIs estándar para desarrolladores de aplicaciones."],
+                        link: "https://www.etsi.org/newsroom/news/2372-etsi-mec-edge-computing-5g-integration"
+                    },
+                    {
+                        id: "etsi-7",
+                        title: "Estándar de criptografía post-cuántica para redes de telecomunicación",
+                        date: "2026-08-31",
+                        topic: "Ciberseguridad",
+                        summary: "Publicación del informe ETSI GR QSC 010 sobre algoritmos resistentes a ataques cuánticos.",
+                        takeaways: ["Migración de infraestructura TLS.", "Evaluación de claves simétricas de alta longitud."],
+                        link: "https://www.etsi.org/newsroom/news/2364-post-quantum-cryptography-telecom-report"
+                    },
+                    {
+                        id: "etsi-8",
+                        title: "ETSI NFV Release 6: Virtualización de funciones de red para redes 6G",
+                        date: "2026-08-25",
+                        topic: "5G/6G & Redes",
+                        summary: "Orquestación en contenedores Kubernetes nativos para funciones de plano de usuario (UPF).",
+                        takeaways: ["Microservicios cloud-native.", "Escalado automático según volumen de demanda."],
+                        link: "https://www.etsi.org/newsroom/news/2355-etsi-nfv-release-6-cloud-native-6g"
+                    },
+                    {
+                        id: "etsi-9",
+                        title: "Requisitos técnicos para llamadas de emergencia automatizadas (eCall 2.0)",
+                        date: "2026-08-20",
+                        topic: "Telecomunicaciones",
+                        summary: "Migración obligatoria de eCall a redes 4G/5G con transmisión de vídeo y datos biométricos.",
+                        takeaways: ["Transmisión inmediata de coordenadas GPS.", "Compatibilidad con centros de control 112."],
+                        link: "https://www.etsi.org/newsroom/news/2347-ecall-next-generation-4g-5g-specification"
+                    },
+                    {
+                        id: "etsi-10",
+                        title: "Eficiencia energética e indicadores KPI en redes de acceso de radio (RAN)",
+                        date: "2026-08-15",
+                        topic: "Sostenibilidad",
+                        summary: "Metodología de medición del consumo por bit en transmisores MIMO masivos.",
+                        takeaways: ["Modos de suspensión profunda de celdas.", "Ahorro energético medio del 25%."],
+                        link: "https://www.etsi.org/newsroom/news/2339-ran-energy-efficiency-kpi-standard"
+                    }
+                ]
+            },
+            {
+                id: "3gpp",
+                name: "3GPP",
+                fullName: "3rd Generation Partnership Project",
+                logo: "fa-signal",
+                badgeColor: "border-purple-500/30 text-purple-400 bg-purple-500/10",
+                url: "https://www.3gpp.org/",
+                articles: [
+                    {
+                        id: "3gpp-1",
+                        title: "3GPP finaliza Release 18: La era de 5G-Advanced",
+                        date: "2026-10-01",
+                        topic: "5G/6G & Redes",
+                        summary: "Aprobación de especificaciones completas con IA nativa en la interfaz de aire (RAN) y redes no terrestres.",
+                        takeaways: ["Integración satelital directa con teléfonos.", "Eficiencia energética mejorada en un 30%."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/rel-18-complete-5g-advanced"
+                    },
+                    {
+                        id: "3gpp-2",
+                        title: "Inicia el estudio formal del Release 19 hacia las bases del 6G",
+                        date: "2026-09-26",
+                        topic: "5G/6G & Redes",
+                        summary: "Acuerdo de las líneas prioritarias para bandas sub-THGHz y detección y comunicación integradas (ISAC).",
+                        takeaways: ["Comunicaciones con precisión centimétrica.", "Sensing integrado en la infraestructura."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/rel-19-6g-foundations-kickoff"
+                    },
+                    {
+                        id: "3gpp-3",
+                        title: "Avanzan especificaciones de Misión Crítica sobre 5G (MCX)",
+                        date: "2026-09-21",
+                        topic: "Telecomunicaciones",
+                        summary: "Mejoras de resiliencia para comunicaciones de policía, bomberos y emergencias sanitarias en redes privadas.",
+                        takeaways: ["Prioridad absoluta de tráfico en celda.", "Modo comunicación directa off-grid."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/mcx-mission-critical-5g-enhancements"
+                    },
+                    {
+                        id: "3gpp-4",
+                        title: "Mejoras en posicionamiento ultra-preciso en interiores para industria 4.0",
+                        date: "2026-09-15",
+                        topic: "Normalización Industrial",
+                        summary: "Nuevos algoritmos en 5G NR para localización en tiempo real de vehículos guiados (AGV) en almacenes.",
+                        takeaways: ["Precisión sub-métrica en 3D.", "Sincronización horaria industrial pTP."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/indoor-positioning-sub-meter-5g-nr"
+                    },
+                    {
+                        id: "3gpp-5",
+                        title: "Estandarización de Redes No Terrestres (NTN) en órbita LEO",
+                        date: "2026-09-10",
+                        topic: "5G/6G & Redes",
+                        summary: "Compensación de efecto Doppler y retraso de propagación en enlaces directos smartphone-satélite.",
+                        takeaways: ["Handover transparente entre satélites.", "Soporte para mensajería de emergencia."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/ntn-satellite-direct-to-cell-spec"
+                    },
+                    {
+                        id: "3gpp-6",
+                        title: "Redes 5G Privadas NPN: Soporte para comunicaciones Ultra-Fiables URLLC",
+                        date: "2026-09-04",
+                        topic: "5G/6G & Redes",
+                        summary: "Integración de Time-Sensitive Networking (TSN) sobre interfaz de radio para automatización industrial.",
+                        takeaways: ["Jitter controlado inferior a 1 microsegundo.", "Cero pérdida de paquetes."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/5g-private-npn-tsn-urllc-industry"
+                    },
+                    {
+                        id: "3gpp-7",
+                        title: "Optimización por Inteligencia Artificial en la Capa Física RAN",
+                        date: "2026-08-30",
+                        topic: "Inteligencia Artificial",
+                        summary: "Modelos de Machine Learning embebidos en el gNodeB para estimación masiva de canales MIMO.",
+                        takeaways: ["Reducción de señalización de referencia.", "Aumento del 20% en capacidad de descarga."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/air-interface-ran-ai-ml-optimization"
+                    },
+                    {
+                        id: "3gpp-8",
+                        title: "Sistemática 5G RedCap (Reduced Capability) para IoT Industrial masivo",
+                        date: "2026-08-24",
+                        topic: "Normalización Industrial",
+                        summary: "Módulos de radio simplificados de menor coste y consumo para sensores y wearables industriales.",
+                        takeaways: ["Batería con duración superior a 5 años.", "Ancho de banda optimizado de 20 MHz."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/5g-redcap-industrial-iot-deployment"
+                    },
+                    {
+                        id: "3gpp-9",
+                        title: "Especificación 5G Slicing dinámico con SLAs garantizados end-to-end",
+                        date: "2026-08-18",
+                        topic: "5G/6G & Redes",
+                        summary: "Creación y aislamiento instantáneo de rebanadas de red para operadoras y clientes corporativos.",
+                        takeaways: ["Garantía de ancho de banda por software.", "Aislamiento lógico de seguridad."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/5g-network-slicing-e2e-sla-guarantee"
+                    },
+                    {
+                        id: "3gpp-10",
+                        title: "Arquitectura de Núcleo Móvil 5G Service-Based Architecture (SBA) v18",
+                        date: "2026-08-12",
+                        topic: "5G/6G & Redes",
+                        summary: "Interfaces RESTful HTTP/2 mejoradas para comunicación rápida entre funciones de red (NFs).",
+                        takeaways: ["Descubrimiento automatizado NRF.", "Soporte de microservicios multi-cloud."],
+                        link: "https://www.3gpp.org/news-events/3gpp-news/5gc-sba-architecture-v18-updates"
+                    }
+                ]
+            },
+            {
+                id: "cencenelec",
+                name: "CEN-CENELEC",
+                fullName: "Comités Europeos de Normalización Electrotécnica",
+                logo: "fa-building-columns",
+                badgeColor: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10",
+                url: "https://www.cencenelec.eu/",
+                articles: [
+                    {
+                        id: "cencenelec-1",
+                        title: "Armonización de normas bajo la Ley de Ciberresiliencia Europea (CRA)",
+                        date: "2026-10-01",
+                        topic: "Ciberseguridad",
+                        summary: "Mapa de normas armonizadas para fabricantes de hardware y software con marcado CE obligatorio.",
+                        takeaways: ["Evaluación obligatoria de vulnerabilidades.", "Soporte de parches durante ciclo de vida."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-10-01-cyber-resilience-act/"
+                    },
+                    {
+                        id: "cencenelec-2",
+                        title: "Nueva norma europea sobre reciclabilidad y Pasaporte Digital de Producto",
+                        date: "2026-09-25",
+                        topic: "Sostenibilidad",
+                        summary: "Directrices para el diseño ecológico y trazabilidad de materiales en productos electrónicos.",
+                        takeaways: ["Desmontaje simplificado de componentes.", "Estructura de datos para Pasaporte Digital."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-09-25-digital-product-passport/"
+                    },
+                    {
+                        id: "cencenelec-3",
+                        title: "Estándares armonizados para hidrogeneneras y repostaje pesado",
+                        date: "2026-09-20",
+                        topic: "Normalización Industrial",
+                        summary: "Requisitos de seguridad e infraestructura para transporte pesado de hidrógeno en corredores europeos.",
+                        takeaways: ["Pruebas de presión e estanqueidad.", "Protocolos de comunicación camión-dispensador."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-09-20-hydrogen-refuelling-standard/"
+                    },
+                    {
+                        id: "cencenelec-4",
+                        title: "CEN/CLC JTC 21: Avances en estándares de apoyo a la Ley de IA de la UE",
+                        date: "2026-09-14",
+                        topic: "Inteligencia Artificial",
+                        summary: "Desarrollo de normas de evaluación de conformidad para sistemas de IA catalogados de alto riesgo.",
+                        takeaways: ["Métricas de gobernanza de datos de entreno.", "Evaluación de robustez cibersegura."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-09-14-eu-ai-act-standardization/"
+                    },
+                    {
+                        id: "cencenelec-5",
+                        title: "Especificación técnica para sistemas fotovoltaicos integrados en edificios (BIPV)",
+                        date: "2026-09-08",
+                        topic: "Sostenibilidad",
+                        summary: "Normativa de seguridad contra incendios y rendimiento estructural de paneles solares en fachadas.",
+                        takeaways: ["Aislamiento eléctrico reinforced.", "Resistencia a condiciones meteorológicas extremas."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-09-08-bipv-building-integrated-pv/"
+                    },
+                    {
+                        id: "cencenelec-6",
+                        title: "Publicada la norma EN 17210 sobre accesibilidad universal en el entorno construido",
+                        date: "2026-09-03",
+                        topic: "Normalización Industrial",
+                        summary: "Criterios de diseño para garantizar el acceso sin barreras a edificios e infraestructuras públicas.",
+                        takeaways: ["Señalética física y digital accesible.", "Diseño para personas con movilidad reducida."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-09-03-en-17210-accessibility-standard/"
+                    },
+                    {
+                        id: "cencenelec-7",
+                        title: "Estándar EN 50126 para fiabilidad y seguridad RAMS en sector ferroviario",
+                        date: "2026-08-29",
+                        topic: "Normalización Industrial",
+                        summary: "Especificación del ciclo de vida para la gestión de riesgos en señalización e infraestructuras de trenes.",
+                        takeaways: ["Niveles de integridad de seguridad SIL 4.", "Análisis sistemático de fallos."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-08-29-railway-rams-en-50126/"
+                    },
+                    {
+                        id: "cencenelec-8",
+                        title: "Gobernanza de ciberseguridad en redes de distribución de gas inteligente",
+                        date: "2026-08-23",
+                        topic: "Ciberseguridad",
+                        summary: "Requisitos de encriptación para contadores inteligentes y válvulas operadas remotamente.",
+                        takeaways: ["Autenticación estricta de comandos remotos.", "Prevención de sabotajes digitales."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-08-23-smart-gas-grid-cybersecurity/"
+                    },
+                    {
+                        id: "cencenelec-9",
+                        title: "Guía para el cálculo de huella de carbono en la fabricación de cemento y acero",
+                        date: "2026-08-17",
+                        topic: "Sostenibilidad",
+                        summary: "Metodología unificada para verificar la descarbonización de materiales de construcción pesados.",
+                        takeaways: ["Declaraciones Ambientales de Producto (DAP).", "Certificación neutra en carbono."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-08-17-green-steel-cement-decarbonization/"
+                    },
+                    {
+                        id: "cencenelec-10",
+                        title: "Armonización europea para la carga inalámbrica inductiva de vehículos eléctricos",
+                        date: "2026-08-11",
+                        topic: "Electrotecnia",
+                        summary: "Aprobación de la norma CLC/TS 50717 para placas de carga por inducción en aparcamientos públicos.",
+                        takeaways: ["Eficiencia de transferencia superior al 92%.", "Detección de objetos extraños sobre la placa."],
+                        link: "https://www.cencenelec.eu/news-and-events/news/2026/brief-2026-08-11-wireless-ev-charging-standard/"
+                    }
+                ]
+            },
+            {
+                id: "cept",
+                name: "CEPT",
+                fullName: "Conferencia Europea de Administraciones de Correos y Telecomunicaciones",
+                logo: "fa-tower-broadcast",
+                badgeColor: "border-teal-500/30 text-teal-400 bg-teal-500/10",
+                url: "https://www.cept.org/",
+                articles: [
+                    {
+                        id: "cept-1",
+                        title: "El Comité ECC aprueba la armonización de la banda de 6 GHz para Wi-Fi 7",
+                        date: "2026-10-02",
+                        topic: "Telecomunicaciones",
+                        summary: "Decisión clave para autorizar el uso exento de licencia en la banda superior de 6 GHz en Europa.",
+                        takeaways: ["Condiciones de coexistencia con radioenlaces.", "Capacidad Wi-Fi multiplicada en interiores."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-decisions/ecc-dec-26-01-wifi7-6ghz-spectrum"
+                    },
+                    {
+                        id: "cept-2",
+                        title: "Estudios de coexistencia entre servicios satelitales LEO y redes móviles 5G",
+                        date: "2026-09-26",
+                        topic: "5G/6G & Redes",
+                        summary: "Informe CEPT sobre mitigación de interferencias transfronterizas entre mega-constelaciones y radiobases.",
+                        takeaways: ["Límites de densidad de flujo de potencia.", "Coordinación transfronteriza de frecuencias."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-reports/ecc-rep-355-leo-satellites-5g-coexistence"
+                    },
+                    {
+                        id: "cept-3",
+                        title: "Preparación del borrador de la Posición Común Europea para CMR-27",
+                        date: "2026-09-20",
+                        topic: "Telecomunicaciones",
+                        summary: "Consenso europeo sobre asignaciones de espectro para comunicaciones científicas y terrestres.",
+                        takeaways: ["Protección de bandas de observación científica.", "Nuevas bandas de identificación IMT."],
+                        link: "https://www.cept.org/cpg/news/european-common-proposals-wrc-27-draft"
+                    },
+                    {
+                        id: "cept-4",
+                        title: "Recomendaciones ECC sobre comunicaciones de ferrocarril FRMCS en 1900 MHz",
+                        date: "2026-09-14",
+                        topic: "Normalización Industrial",
+                        summary: "Asignación de canalizaciones para la transición de GSM-R a la nueva red móvil ferroviaria 5G.",
+                        takeaways: ["Soporte de tren autónomo de alta velocidad.", "Banda reservada libre de interferencias comerciales."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-recommendations/ecc-rec-26-02-frmcs-1900mhz"
+                    },
+                    {
+                        id: "cept-5",
+                        title: "Informe sobre el uso de bandas milimétricas (mmWave) en eventos masivos",
+                        date: "2026-09-08",
+                        topic: "Telecomunicaciones",
+                        summary: "Guía de despliegue temporal de celdas en 26 GHz para estadios y recintos feriales.",
+                        takeaways: ["Gestión de haces dirigidos (beamforming).", "Soporte de picos de tráfico extremo."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-reports/ecc-rep-348-mmwave-26ghz-temporary-events"
+                    },
+                    {
+                        id: "cept-6",
+                        title: "CEPT Decision (26)03: Regulación de radares automotrices en 77-81 GHz",
+                        date: "2026-09-02",
+                        topic: "Telecomunicaciones",
+                        summary: "Protección de frecuencias para radares de frenado automático y detección de peatones.",
+                        takeaways: ["Ancho de banda continuo de 4 GHz.", "Inmunidad ante interferencias entre vehículos."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-decisions/ecc-dec-26-03-automotive-radar-77ghz"
+                    },
+                    {
+                        id: "cept-7",
+                        title: "Armonización de frecuencias para comunicaciones de salvamento y socorro (GMDSS)",
+                        date: "2026-08-27",
+                        topic: "Telecomunicaciones",
+                        summary: "Protección de bandas marítimas VHF y satelitales para balizas de emergencia episódicas.",
+                        takeaways: ["Cero tolerancia a emisiones no esenciales.", "Uso de satélites MEO para localización."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-decisions/ecc-dec-26-04-gmdss-maritime-safety"
+                    },
+                    {
+                        id: "cept-8",
+                        title: "Estudio del Grupo WG SE sobre redes de sensores ultrabajas en 868 MHz",
+                        date: "2026-08-21",
+                        topic: "Normalización Industrial",
+                        summary: "Revisión de los ciclos de trabajo (Duty Cycle) para contadores de agua y gas en banda SRD.",
+                        takeaways: ["Coexistencia de tecnologías LoRaWAN y Sigfox.", "Optimización de potencia radiada PRA."],
+                        link: "https://www.cept.org/ecc/groups/ecc/wg-se/news/wgse-report-srd-868mhz-duty-cycle"
+                    },
+                    {
+                        id: "cept-9",
+                        title: "Regulación transfronteriza de enlaces de microondas de alta capacidad (80 GHz)",
+                        date: "2026-08-16",
+                        topic: "5G/6G & Redes",
+                        summary: "Simplificación de acuerdos bilatelares para redes fronterizas de backhaul en Banda E.",
+                        takeaways: ["Licenciamiento rápido simplificado.", "Velocidades de enlace superiores a 20 Gbps."],
+                        link: "https://www.cept.org/ecc/deliverables/ecc-recommendations/ecc-rec-26-05-e-band-cross-border"
+                    },
+                    {
+                        id: "cept-10",
+                        title: "Monitoreo del espectro mediante estaciones de goniometría espacial remota",
+                        date: "2026-08-10",
+                        topic: "Telecomunicaciones",
+                        summary: "Informe del Grupo WG FM sobre geolocalización automatizada de emisorás no autorizadas.",
+                        takeaways: ["Red de receptores distribuidos SDR.", "Resolución de interferencias perjudiciales."],
+                        link: "https://www.cept.org/ecc/groups/ecc/wg-fm/news/wgfm-spectrum-monitoring-geolocation"
+                    }
+                ]
+            },
+            {
+                id: "une",
+                name: "UNE",
+                fullName: "Asociación Española de Normalización",
+                logo: "fa-flag",
+                badgeColor: "border-orange-500/30 text-orange-400 bg-orange-500/10",
+                url: "https://www.une.org/",
+                articles: [
+                    {
+                        id: "une-1",
+                        title: "Publicada la norma UNE 165010 sobre Transparencia y Sostenibilidad ESG",
+                        date: "2026-10-02",
+                        topic: "Sostenibilidad",
+                        summary: "Estándar nacional alineado con la directiva europea CSRD de reporte de sostenibilidad corporativa.",
+                        takeaways: ["Indicadores cuantitativos ambientales.", "Verificación por auditoría independiente."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=une-165010-sostenibilidad-esg-2026"
+                    },
+                    {
+                        id: "une-2",
+                        title: "UNE presenta la especificación para la Digitalización en PYMES Industriales",
+                        date: "2026-09-27",
+                        topic: "Normalización Industrial",
+                        summary: "Guía metodológica para la implantación de sensorización IoT y gemelos digitales en plantas industriales.",
+                        takeaways: ["Niveles de madurez digital estructurados.", "Criterios para ayudas y subvenciones públicas."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=especificacion-une-digitalizacion-pymes-2026"
+                    },
+                    {
+                        id: "une-3",
+                        title: "Norma UNE de Ciberseguridad en Edificios e Infraestructuras Inteligentes",
+                        date: "2026-09-21",
+                        topic: "Ciberseguridad",
+                        summary: "Requisitos de seguridad física y lógica en sistemas domóticos, control de accesos y HVAC.",
+                        takeaways: ["Protección frente a accesos remotos no autorizados.", "Privacidad en recolección de datos de sensores."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=norma-une-ciberseguridad-edificios-inteligentes"
+                    },
+                    {
+                        id: "une-4",
+                        title: "Nuevos estándares UNE para ciudades inteligentes y gobernanza de datos",
+                        date: "2026-09-16",
+                        topic: "Normalización Industrial",
+                        summary: "Normas de interoperabilidad entre plataformas de smart city y cuadros de mando municipales.",
+                        takeaways: ["Modelos de datos abiertos reutilizables.", "Estandarización de APIs urbanas."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=estandares-une-178-smart-cities-datos"
+                    },
+                    {
+                        id: "une-5",
+                        title: "UNE-EN ISO 50001: Guía práctica para la gestión de la energía en telecomunicaciones",
+                        date: "2026-09-11",
+                        topic: "Sostenibilidad",
+                        summary: "Directrices para auditar y reducir la factura eléctrica en estaciones base y centros de conmutación.",
+                        takeaways: ["Métricas de consumo energético por Gigabyte.", "Planes de optimización continua."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=guia-une-en-iso-50001-telecomunicaciones"
+                    },
+                    {
+                        id: "une-6",
+                        title: "UNE 66177: Guía para la integración de sistemas de gestión normativos",
+                        date: "2026-09-05",
+                        topic: "Normalización Industrial",
+                        summary: "Metodología para unificar ISO 9001, ISO 14001 e ISO 45001 en un único mapa de procesos.",
+                        takeaways: ["Reducción de duplicidades en auditorías.", "Alineación estratégica con la dirección."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=norma-une-66177-integracion-sistemas-gestion"
+                    },
+                    {
+                        id: "une-7",
+                        title: "Comité CTN 71: Normalización de la identidad digital descentralizada en España",
+                        date: "2026-08-30",
+                        topic: "Ciberseguridad",
+                        summary: "Alineación de normas técnicas españolas con el Reglamento eIDAS2 y el DNI Digital Europeo.",
+                        takeaways: ["Verificación segura de identidad digital.", "Soporte para administración pública y banca."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=ctn-71-identidad-digital-descentralizada"
+                    },
+                    {
+                        id: "une-8",
+                        title: "UNE 19601: Sistemas de gestión de compliance penal en empresas",
+                        date: "2026-08-25",
+                        topic: "Normalización Industrial",
+                        summary: "Actualización de requisitos para la exención de responsabilidad penal de personas jurídicas.",
+                        takeaways: ["Canales éticos de denuncia protegidos.", "Matriz de riesgos penales específicos."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=une-19601-compliance-penal-actualizacion"
+                    },
+                    {
+                        id: "une-9",
+                        title: "Norma UNE para la valoración económica de la marca e intangibles",
+                        date: "2026-08-19",
+                        topic: "Normalización Industrial",
+                        summary: "Criterios auditables para valorar patentes, marcas y activos digitales en balances contables.",
+                        takeaways: ["Modelos financieros homologados.", "Útil para operaciones de M&A y financiación."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=norma-une-valoracion-marca-activos-intangibles"
+                    },
+                    {
+                        id: "une-10",
+                        title: "Estándar UNE de Economía Circular en el sector de la construcción",
+                        date: "2026-08-13",
+                        topic: "Sostenibilidad",
+                        summary: "Protocolo para la gestión y revalorización de residuos de demolición y construcción (RCD).",
+                        takeaways: ["Trazabilidad de materiales reciclados.", "Porcentaje mínimo obligatorio en obra pública."],
+                        link: "https://www.une.org/sala-de-prensa/noticias/noticia-detalle?n=une-economia-circular-residuos-construccion"
+                    }
+                ]
+            }
+        ];
+
+        // Available categories
+        const ALL_TOPICS = [
+            "Todos",
+            "5G/6G & Redes",
+            "Ciberseguridad",
+            "Inteligencia Artificial",
+            "Sostenibilidad",
+            "Normalización Industrial",
+            "Electrotecnia",
+            "Telecomunicaciones"
+        ];
+
+        // Application State
+        let selectedTopic = "Todos";
+        let searchQuery = "";
+        let newsLimitPerBlock = 10; // Default to 10 items
+        let lastSyncTime = new Date();
+        const REFRESH_INTERVAL_SECONDS = 3600; // 1 Hour
+        let secondsRemaining = REFRESH_INTERVAL_SECONDS;
+        let countdownTimerId = null;
+
+        // Render topic filter pills
+        function renderTopicPills() {
+            const container = document.getElementById('topic-pills');
+            container.innerHTML = ALL_TOPICS.map(topic => {
+                const isActive = topic === selectedTopic;
+                const activeClass = isActive 
+                    ? "bg-sky-500 text-white font-semibold border-sky-400 shadow-sm shadow-sky-500/30" 
+                    : "bg-slate-950 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border-slate-800";
+                
+                return `
+                    <button onclick="setTopic('${topic}')" class="px-2.5 py-1 text-xs border rounded-lg transition-all ${activeClass}">
+                        ${topic}
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function setTopic(topic) {
+            selectedTopic = topic;
+            renderTopicPills();
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const gridContainer = document.getElementById('org-grid');
+            let totalRenderedArticles = 0;
+            let activeOrgsCount = 0;
+
+            const htmlContent = ORGANIZATIONS_DATA.map(org => {
+                // Filter and slice to user selected limit (5, 8 or 10)
+                const filteredArticles = org.articles.filter(article => {
+                    const matchesTopic = (selectedTopic === "Todos" || article.topic === selectedTopic);
+                    const query = searchQuery.toLowerCase();
+                    const matchesSearch = !query || 
+                        article.title.toLowerCase().includes(query) ||
+                        article.summary.toLowerCase().includes(query) ||
+                        article.topic.toLowerCase().includes(query) ||
+                        org.name.toLowerCase().includes(query);
+                    
+                    return matchesTopic && matchesSearch;
+                }).slice(0, newsLimitPerBlock);
+
+                if (filteredArticles.length > 0) {
+                    activeOrgsCount++;
+                    totalRenderedArticles += filteredArticles.length;
+                }
+
+                const formattedSyncTime = lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // Render Organization Window Card
+                return `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col h-[680px] shadow-lg overflow-hidden transition-all ${filteredArticles.length === 0 ? 'opacity-40' : ''}">
+                        
+                        <!-- Box Header -->
+                        <div class="p-3.5 border-b border-slate-800 bg-slate-900/90 flex items-center justify-between">
+                            <div class="flex items-center space-x-2.5 overflow-hidden">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center border ${org.badgeColor} shrink-0">
+                                    <i class="fa-solid ${org.logo} text-xs"></i>
+                                </div>
+                                <div class="truncate">
+                                    <h3 class="font-bold text-white text-sm leading-tight truncate">${org.name}</h3>
+                                    <p class="text-[10px] text-slate-400 truncate">${org.fullName}</p>
+                                </div>
+                            </div>
+                            <span class="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono border border-slate-700/60 shrink-0">
+                                ${filteredArticles.length}/${newsLimitPerBlock} noticias
+                            </span>
+                        </div>
+
+                        <!-- Subheader Status Badge -->
+                        <div class="px-3 py-1.5 bg-slate-950/60 border-b border-slate-800/60 flex justify-between items-center text-[10px] text-slate-400">
+                            <span class="flex items-center gap-1.5 text-emerald-400 font-medium">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Sincronizado
+                            </span>
+                            <span class="text-slate-500 font-mono">Última carga: ${formattedSyncTime}</span>
+                        </div>
+
+                        <!-- Box Scrollable News Feed -->
+                        <div class="flex-1 overflow-y-auto p-3.5 space-y-3 custom-scrollbar bg-slate-950/30">
+                            ${filteredArticles.length > 0 ? filteredArticles.map((art, idx) => `
+                                <article class="bg-slate-900 border border-slate-800 hover:border-sky-500/50 rounded-xl p-3 space-y-2 transition-all group shadow-sm">
+                                    <div class="flex items-center justify-between text-[10px]">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-[9px] font-mono font-bold text-slate-500">#${idx + 1}</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                                                ${art.topic}
+                                            </span>
+                                        </div>
+                                        <span class="text-slate-500 font-mono"><i class="fa-regular fa-calendar mr-1"></i>${art.date}</span>
+                                    </div>
+
+                                    <h4 class="text-xs font-semibold text-slate-200 group-hover:text-sky-400 transition-colors leading-snug">
+                                        ${art.title}
+                                    </h4>
+
+                                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                                        ${art.summary}
+                                    </p>
+
+                                    <!-- Key Takeaways -->
+                                    <div class="bg-slate-950/70 p-2 rounded-lg border border-slate-800/60 text-[10px] text-slate-300 space-y-1">
+                                        <div class="text-[9px] uppercase tracking-wider font-bold text-slate-500 flex items-center gap-1">
+                                            <i class="fa-solid fa-list-check text-sky-400"></i> Puntos Clave
+                                        </div>
+                                        ${art.takeaways.map(t => `<div class="flex items-start gap-1.5"><span class="text-sky-400">•</span><span>${t}</span></div>`).join('')}
+                                    </div>
+
+                                    <!-- Direct Link to Exact Specific Publication Page -->
+                                    <div class="pt-1 flex justify-end">
+                                        <a href="${art.link}" target="_blank" rel="noopener noreferrer" 
+                                           title="Ir a la noticia publicada específica en ${org.name}"
+                                           class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-sky-500/10 hover:bg-sky-500/20 text-[10.5px] font-medium text-sky-400 hover:text-sky-300 border border-sky-500/20 transition-all">
+                                            <span>Leer noticia original completa</span>
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                        </a>
+                                    </div>
+                                </article>
+                            `).join('') : `
+                                <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-600 space-y-2">
+                                    <i class="fa-solid fa-filter text-2xl mb-1 text-slate-700"></i>
+                                    <p class="text-xs font-medium text-slate-500">Sin noticias coincidentes</p>
+                                    <p class="text-[10px] text-slate-600">Prueba cambiando el filtro temático o la búsqueda para ${org.name}.</p>
+                                </div>
+                            `}
+                        </div>
+
+                        <!-- Box Footer -->
+                        <div class="p-2.5 border-t border-slate-800 bg-slate-900/90 flex justify-between items-center text-[10.5px] text-slate-400">
+                            <span class="truncate">Mostrando Top ${newsLimitPerBlock} artículos</span>
+                            <a href="${org.url}" target="_blank" class="hover:text-sky-400 flex items-center gap-1 font-medium shrink-0">
+                                <span>Portal ${org.name}</span> <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            gridContainer.innerHTML = htmlContent;
+
+            // Update Metrics
+            document.getElementById('stat-orgs').textContent = activeOrgsCount;
+            document.getElementById('stat-articles').textContent = totalRenderedArticles;
+            document.getElementById('stat-topic').textContent = selectedTopic;
+            document.getElementById('stat-time').textContent = lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Automatic Hourly Refresh Engine
+        function startSyncTimer() {
+            if (countdownTimerId) clearInterval(countdownTimerId);
+
+            countdownTimerId = setInterval(() => {
+                secondsRemaining--;
+
+                if (secondsRemaining <= 0) {
+                    triggerDataRefresh();
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(secondsRemaining / 60);
+            const seconds = secondsRemaining % 60;
+            const formatted = `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
+            document.getElementById('timer-display').textContent = formatted;
+        }
+
+        function triggerDataRefresh() {
+            const icon = document.getElementById('refresh-icon');
+            const btn = document.getElementById('btn-refresh');
+
+            icon.classList.add('fa-spin');
+            btn.disabled = true;
+
+            // Simulate feed synchronization
+            setTimeout(() => {
+                lastSyncTime = new Date();
+                secondsRemaining = REFRESH_INTERVAL_SECONDS;
+                
+                icon.classList.remove('fa-spin');
+                btn.disabled = false;
+
+                renderGrid();
+                updateTimerDisplay();
+            }, 800);
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderGrid();
+        });
+
+        document.getElementById('limit-selector').addEventListener('change', (e) => {
+            newsLimitPerBlock = parseInt(e.target.value, 10);
+            renderGrid();
+        });
+
+        document.getElementById('btn-refresh').addEventListener('click', () => {
+            triggerDataRefresh();
+        });
+
+        document.getElementById('btn-export').addEventListener('click', () => {
+            let markdown = `# Informe de Noticias Normativas por Organismo (Top ${newsLimitPerBlock})\n`;
+            markdown += `*Fecha de generación: ${lastSyncTime.toLocaleString()}*\n`;
+            markdown += `*Próxima actualización de datos en 1 hora*\n\n`;
+            markdown += `**Filtro Temático:** ${selectedTopic} | **Búsqueda:** "${searchQuery || 'Todas'}"\n\n---\n\n`;
+
+            ORGANIZATIONS_DATA.forEach(org => {
+                const filtered = org.articles.filter(article => {
+                    const matchesTopic = (selectedTopic === "Todos" || article.topic === selectedTopic);
+                    const query = searchQuery.toLowerCase();
+                    const matchesSearch = !query || 
+                        article.title.toLowerCase().includes(query) ||
+                        article.summary.toLowerCase().includes(query);
+                    return matchesTopic && matchesSearch;
+                }).slice(0, newsLimitPerBlock);
+
+                if (filtered.length > 0) {
+                    markdown += `## Organismo: ${org.name} (${org.fullName})\n`;
+                    filtered.forEach((art, idx) => {
+                        markdown += `### ${idx + 1}. [${art.date}] ${art.title}\n`;
+                        markdown += `- **Categoría:** ${art.topic}\n`;
+                        markdown += `- **Resumen:** ${art.summary}\n`;
+                        markdown += `- **Puntos clave:**\n`;
+                        art.takeaways.forEach(t => markdown += `  * ${t}\n`);
+                        markdown += `- **URL directa a noticia original:** ${art.link}\n\n`;
+                    });
+                }
+            });
+
+            // Trigger file download
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reporte_normativo_${newsLimitPerBlock}_noticias_${new Date().toISOString().slice(0,10)}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Initialize App
+        window.onload = () => {
+            renderTopicPills();
+            renderGrid();
+            updateTimerDisplay();
+            startSyncTimer();
+        };
+    </script>
+</body>
+</html>
